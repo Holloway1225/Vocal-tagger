@@ -1,0 +1,335 @@
+<title>Suno Vocal Tagger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: two-column bench (input left, tagged output right), stacks to one column on phones */
+:root{
+  --bg:#eef0f3; --panel:#ffffff; --sunk:#e3e6ec; --line:#cdd2db;
+  --fg:#171a21; --muted:#5b6272; --accent:#b8741a; --accent-fg:#ffffff;
+  --m:#2f6fb8; --m-bg:#dbe7f6; --f:#b83f6b; --f-bg:#f6dde6; --b:#8a6a12; --b-bg:#f3e9c9;
+  --warn:#9a4a00; --warn-bg:#fbe8d2;
+  --display:"Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101216; --panel:#181b21; --sunk:#0c0e11; --line:#2b3039;
+  --fg:#e6e8ec; --muted:#8d94a3; --accent:#e5a13f; --accent-fg:#16110a;
+  --m:#7fb0ee; --m-bg:#1b2a3d; --f:#ee8fb2; --f-bg:#3a1f2a; --b:#e3c46a; --b-bg:#352c14;
+  --warn:#f2b27a; --warn-bg:#3a2614; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101216; --panel:#181b21; --sunk:#0c0e11; --line:#2b3039;
+  --fg:#e6e8ec; --muted:#8d94a3; --accent:#e5a13f; --accent-fg:#16110a;
+  --m:#7fb0ee; --m-bg:#1b2a3d; --f:#ee8fb2; --f-bg:#3a1f2a; --b:#e3c46a; --b-bg:#352c14;
+  --warn:#f2b27a; --warn-bg:#3a2614; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);padding:20px 16px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header h1{font:700 1.7rem/1.1 var(--display);letter-spacing:.02em;margin:0;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.grid{display:grid;grid-template-columns:1fr;gap:18px}
+@media (min-width:900px){.grid{grid-template-columns:1fr 1fr;align-items:start}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ph h2{font:600 .95rem/1 var(--display);text-transform:uppercase;letter-spacing:.08em;margin:0}
+.ph h2 span{color:var(--accent);margin-right:6px}
+.hint{color:var(--muted);font-size:.85rem}
+textarea,input[type=text]{width:100%;background:var(--sunk);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:14px/1.5 var(--mono)}
+textarea{resize:vertical}
+#lyrics{min-height:260px}
+#style{min-height:110px}
+textarea:focus,input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--sunk);color:var(--fg);border:0;padding:11px 6px;font:600 .9rem var(--display);letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row>label.f{flex:1 1 200px}
+.chk{display:flex;gap:8px;align-items:center;font-size:.9rem}
+select{background:var(--sunk);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:500 .85rem var(--body)}
+.sec{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--sunk)}
+.sech{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.sech b{font:600 .9rem var(--display);letter-spacing:.04em}
+.lines{display:flex;flex-direction:column;gap:4px}
+.ln{display:flex;gap:8px;align-items:flex-start;text-align:left;background:none;border:0;color:var(--fg);padding:3px 0;cursor:pointer;font:14px/1.4 var(--body)}
+.ln span:last-child{min-width:0;overflow-wrap:anywhere}
+.pill{flex:none;display:inline-block;min-width:2.4em;text-align:center;border-radius:99px;padding:1px 7px;font:600 .72rem/1.5 var(--mono);letter-spacing:.04em}
+.pM{background:var(--m-bg);color:var(--m)} .pF{background:var(--f-bg);color:var(--f)} .pB{background:var(--b-bg);color:var(--b)}
+pre.out{margin:0;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:12px;font:13.5px/1.55 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;max-height:520px;overflow:auto}
+pre.out .t{color:var(--accent);font-weight:500}
+.btn{background:var(--accent);color:var(--accent-fg);border:0;border-radius:7px;padding:8px 14px;font:600 .82rem var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.btn.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.92rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--mono);overflow-wrap:anywhere}
+.warn{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:9px 12px;font-size:.88rem}
+.warn:empty{display:none}
+.tag{font:500 .7rem var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+.count{font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Suno Vocal Tagger</h1>
+    <p>Paste lyrics, pick who sings, and get lyrics with vocal tags plus a matching style prompt, Vocal Gender setting and Exclude line. The style box does most of the work, so use all three.</p>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel">
+        <div class="ph"><h2><span>1</span>Lyrics</h2><div class="row"><span class="tag" id="exTag">Example loaded</span><button class="btn ghost" id="clearLyrics" type="button">Clear</button></div></div>
+        <textarea id="lyrics" spellcheck="false" aria-label="Lyrics"></textarea>
+        <div class="hint">Section headers like [Verse 1], [Chorus] or [Bridge — whispered] are detected. Old gender tags like [Male] are stripped and replaced.</div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2><span>2</span>Who sings</h2></div>
+        <div class="seg" role="group" aria-label="Vocal mode">
+          <button type="button" data-mode="M" id="modeM">Male</button>
+          <button type="button" data-mode="F" id="modeF">Female</button>
+          <button type="button" data-mode="D" id="modeD">Duet</button>
+        </div>
+        <div class="row">
+          <label class="f" id="wrapMT">Male voice texture <input type="text" id="mtex" placeholder="e.g. intimate low-register baritone"></label>
+          <label class="f" id="wrapFT">Female voice texture <input type="text" id="ftex" placeholder="e.g. breathy haunting alto"></label>
+        </div>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="everyHeader" checked> Tag every section header</label>
+          <label class="chk">Separator
+            <select id="sep"><option value=" — ">[Verse 1 — male vocal]</option><option value=": ">[Verse 1: male vocal]</option></select>
+          </label>
+        </div>
+        <div id="duetBox" class="col" style="gap:10px"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2><span>3</span>Style prompt</h2><button class="btn ghost" id="clearStyle" type="button">Clear</button></div>
+        <textarea id="style" spellcheck="false" aria-label="Base style prompt" placeholder="Paste your base style prompt, comma separated"></textarea>
+        <div class="hint">Gender goes first. Any existing item that names a gender gets pulled out so it can't contradict the pick.</div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <div class="ph"><h2>Tagged lyrics</h2><button class="btn" id="copyLyrics" type="button">Copy</button></div>
+        <pre class="out" id="outLyrics"></pre>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Style box</h2><div class="row"><span class="count" id="styleCount"></span><button class="btn" id="copyStyle" type="button">Copy</button></div></div>
+        <pre class="out" id="outStyle"></pre>
+        <div class="warn" id="warns"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><h2>Suno settings</h2><button class="btn" id="copyExclude" type="button">Copy exclude</button></div>
+        <dl class="kv">
+          <dt>Vocal Gender</dt><dd id="setGender"></dd>
+          <dt>Exclude styles</dt><dd id="setExclude"></dd>
+        </dl>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const SAMPLE=`[Verse 1]
+Headlights crawl across the ceiling
+Somebody's pacing in the hall
+I count the seconds in the static
+Waiting for your voice to call
+
+[Chorus]
+Say my name into the dark
+I'll find the place where you are
+Every wire hums your number
+Every silence says it's far
+
+[Verse 2]
+You left the porch light burning
+Like a promise or a dare
+I followed every crooked highway
+Just to find you weren't there
+
+[Chorus]
+Say my name into the dark
+I'll find the place where you are
+Every wire hums your number
+Every silence says it's far
+
+[Bridge — whispered]
+If I stop, will you stop too
+If I turn, will you be through
+
+[Outro]
+Say my name`;
+const SAMPLE_STYLE="Melodic Glitch Metal, Haunting Cinematic Alternative Metal, Intimate Male Vocals, Whispered Low-Register Verses, Hypnotic Vocal Delivery, Slow-Building Tension, Electronic Textures, Sub-Bass Pressure, Spacious Drums, Massive Stereo Atmosphere, Dark, Elegant, Hypnotic";
+
+const SECTION_RE=/^(intro|verse|pre[- ]?chorus|chorus|post[- ]?chorus|hook|refrain|bridge|outro|end|instrumental|interlude|break|breakdown|drop|build[- ]?up|solo|guitar solo|tag|coda)\b/i;
+const GENDER_ONLY_RE=/^(male|female|man|woman|boy|girl|both|duet|together|male vocals?|female vocals?|male and female( vocals?)?|female and male( vocals?)?)$/i;
+const GENDER_WORD_RE=/\b(male|female|man|woman|men|women|boy|girl|duet|masculine|feminine)\b/i;
+const SUNG_EMPTY_RE=/^(instrumental|interlude|break|breakdown|drop|solo|guitar solo|build[- ]?up)/i;
+const LBL={M:"male vocal",F:"female vocal",B:"male and female vocals together"};
+const LINE_TAG={M:"[Male]",F:"[Female]",B:"[Both]"};
+
+let st={mode:"D",sec:{},line:{}};
+try{const s=JSON.parse(localStorage.getItem("svt")||"null");if(s)st=Object.assign(st,s);}catch(e){}
+function save(){try{localStorage.setItem("svt",JSON.stringify({...st,lyrics:$("lyrics").value,style:$("style").value,mtex:$("mtex").value,ftex:$("ftex").value,every:$("everyHeader").checked,sep:$("sep").value}))}catch(e){}}
+
+function splitHeader(inner){
+  const m=inner.match(/^(.*?)(\s+[—–-]\s+|\s*:\s*)(.*)$/);
+  let name=inner.trim(),desc=[];
+  if(m){name=m[1].trim();desc=m[3].split(",").map(s=>s.trim()).filter(Boolean);}
+  desc=desc.filter(d=>!GENDER_ONLY_RE.test(d)&&!(GENDER_WORD_RE.test(d)&&/vocal|voice/i.test(d)));
+  return {name,desc};
+}
+function parse(text){
+  const secs=[];let cur={head:null,lines:[]};secs.push(cur);
+  for(const raw of text.replace(/\r/g,"").split("\n")){
+    const t=raw.trim();const b=t.match(/^\[([^\]]+)\]$/);
+    if(b){
+      const inner=b[1].trim();
+      if(GENDER_ONLY_RE.test(inner))continue;
+      const h=splitHeader(inner);
+      if(SECTION_RE.test(h.name)){cur={head:h,lines:[]};secs.push(cur);continue;}
+    }
+    cur.lines.push(raw);
+  }
+  if(!secs[0].lines.some(l=>l.trim()))secs.shift();
+  secs.forEach(s=>{while(s.lines.length&&!s.lines[s.lines.length-1].trim())s.lines.pop();while(s.lines.length&&!s.lines[0].trim())s.lines.shift();});
+  return secs;
+}
+const sung=s=>s.lines.filter(l=>l.trim()&&!/^\[.*\]$/.test(l.trim()));
+function defAssign(secs){
+  let v=0,last="M";
+  return secs.map(s=>{
+    const n=(s.head?s.head.name:"").toLowerCase();
+    let a;
+    if(/^verse/.test(n)){a=v%2?"F":"M";v++;}
+    else if(/^pre/.test(n))a=last;
+    else if(/chorus|hook|refrain|bridge/.test(n))a="B";
+    else if(/^outro|^end/.test(n))a="B";
+    else a=last;
+    if(a!=="B")last=a;return a;
+  });
+}
+
+function render(){
+  const secs=parse($("lyrics").value);
+  const mode=st.mode, sep=$("sep").value, every=$("everyHeader").checked;
+  ["M","F","D"].forEach(k=>$("mode"+k).setAttribute("aria-pressed",String(mode===k)));
+  $("wrapMT").hidden=mode==="F"; $("wrapFT").hidden=mode==="M";
+  const defs=defAssign(secs);
+  const box=$("duetBox");box.hidden=mode!=="D";box.innerHTML="";
+
+  const out=[];
+  const topTag=mode==="M"?"[Male Vocal]":mode==="F"?"[Female Vocal]":`[Duet${sep}male and female vocals]`;
+  out.push(topTag);
+
+  secs.forEach((s,i)=>{
+    const lyr=sung(s);
+    const a=mode==="D"?(st.sec[i]||defs[i]):mode;
+    const isVocal=lyr.length>0&&!(s.head&&SUNG_EMPTY_RE.test(s.head.name));
+    // duet editor
+    if(mode==="D"&&isVocal){
+      const d=document.createElement("div");d.className="sec";
+      const title=s.head?s.head.name:"Untitled section";
+      d.innerHTML=`<div class="sech"><b>${esc(title)}</b><select id="sa${i}" aria-label="Singer for ${esc(title)}">
+        <option value="M">Male</option><option value="F">Female</option><option value="B">Both</option><option value="L">Line by line</option></select></div>`;
+      const sel=d.querySelector("select");sel.value=a;
+      sel.onchange=()=>{st.sec[i]=sel.value;save();render();};
+      if(a==="L"){
+        const wrapL=document.createElement("div");wrapL.className="lines";
+        let k=0;
+        lyr.forEach((l,j)=>{
+          const key=i+":"+j;const v=st.line[key]||(j%2?"F":"M");
+          const btn=document.createElement("button");btn.type="button";btn.className="ln";
+          btn.innerHTML=`<span class="pill p${v}">${v==="B"?"BOTH":v}</span><span>${esc(l.trim())}</span>`;
+          btn.title="Tap to switch singer";
+          btn.onclick=()=>{st.line[key]={M:"F",F:"B",B:"M"}[v];save();render();};
+          wrapL.appendChild(btn);
+        });
+        const h=document.createElement("div");h.className="hint";h.textContent="Tap a line to cycle Male → Female → Both.";
+        d.appendChild(wrapL);d.appendChild(h);
+      }
+      box.appendChild(d);
+    }
+    // output
+    out.push("");
+    if(s.head){
+      const extra=[];
+      if(isVocal&&(every||mode==="D")){
+        if(a==="L")extra.push("duet, trading lines");else extra.push(LBL[a]);
+      }
+      const desc=extra.concat(s.head.desc);
+      out.push(`[${s.head.name}${desc.length?sep+desc.join(", "):""}]`);
+    }
+    if(mode==="D"&&isVocal){
+      if(a==="L"){
+        let prev=null,j=0;
+        s.lines.forEach(l=>{
+          if(l.trim()&&!/^\[.*\]$/.test(l.trim())){const v=st.line[i+":"+j]||(j%2?"F":"M");j++;
+            if(v!==prev){out.push(LINE_TAG[v]);prev=v;}}
+          out.push(l);
+        });
+      }else{out.push(LINE_TAG[a]);s.lines.forEach(l=>out.push(l));}
+    }else s.lines.forEach(l=>out.push(l));
+  });
+  const txt=out.join("\n").replace(/\n{3,}/g,"\n\n");
+  $("outLyrics").innerHTML=esc(txt).replace(/^(\[.*\])$/gm,'<span class="t">$1</span>');
+  $("outLyrics").dataset.raw=txt;
+
+  // style prompt
+  const items=$("style").value.split(",").map(x=>x.trim()).filter(Boolean);
+  const removed=[],kept=[];
+  items.forEach(x=>(GENDER_WORD_RE.test(x)?removed:kept).push(x));
+  const mt=$("mtex").value.trim(),ft=$("ftex").value.trim();
+  const g=mode==="M"?`${mt?mt+" ":""}male vocals`:mode==="F"?`${ft?ft+" ":""}female vocals`:
+    `male and female duet vocals, ${mt?mt+" ":""}male voice trading lines with ${ft?ft+" ":""}female voice`;
+  const style=[g,...kept].join(", ");
+  $("outStyle").textContent=style;$("outStyle").dataset.raw=style;
+  $("styleCount").textContent=style.length+" chars";
+  const w=[];
+  if(removed.length)w.push("Pulled from your prompt because they name a gender: "+removed.join(", ")+". If you want their texture, add it to the voice texture field.");
+  const harsh=kept.filter(x=>/scream|harsh|growl|shout/i.test(x));
+  if(mode==="F"&&harsh.length)w.push("Harsh vocal tags ("+harsh.join(", ")+") tend to pull male. Rewrite them with \"female\" in the same item, e.g. female screamed vocals.");
+  if(mode==="D")w.push("Duets drift, especially after the first chorus. Expect a few regenerations.");
+  $("warns").innerHTML=w.map(esc).join("<br><br>");
+
+  $("setGender").textContent=mode==="M"?"Male":mode==="F"?"Female":"Leave unset";
+  const ex=mode==="M"?"female vocals":mode==="F"?"male vocals":"";
+  $("setExclude").textContent=ex||"Nothing for a duet";
+  $("copyExclude").hidden=!ex;$("setExclude").dataset.raw=ex;
+  save();
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function copy(el,btn){
+  const t=el.dataset.raw||el.textContent,old=btn.textContent;
+  const ok=()=>{btn.textContent="Copied";setTimeout(()=>btn.textContent=old,1400);};
+  const fb=()=>{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent="Selected, copy it";setTimeout(()=>btn.textContent=old,2000);};
+  try{navigator.clipboard.writeText(t).then(ok,fb);}catch(e){fb();}
+}
+
+// init
+let saved={};try{saved=JSON.parse(localStorage.getItem("svt")||"{}")||{};}catch(e){}
+$("lyrics").value=saved.lyrics!=null?saved.lyrics:SAMPLE;
+$("style").value=saved.style!=null?saved.style:SAMPLE_STYLE;
+$("mtex").value=saved.mtex!=null?saved.mtex:"intimate low-register";
+$("ftex").value=saved.ftex!=null?saved.ftex:"haunting breathy";
+if(saved.every!=null)$("everyHeader").checked=saved.every;
+if(saved.sep)$("sep").value=saved.sep;
+const updEx=()=>{$("exTag").hidden=$("lyrics").value!==SAMPLE;};updEx();
+$("lyrics").addEventListener("input",()=>{updEx();render();});
+["style","mtex","ftex"].forEach(id=>$(id).addEventListener("input",render));
+["everyHeader","sep"].forEach(id=>$(id).addEventListener("change",render));
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{st.mode=b.dataset.mode;render();});
+$("clearLyrics").onclick=()=>{$("lyrics").value="";st.sec={};st.line={};updEx();render();$("lyrics").focus();};
+$("clearStyle").onclick=()=>{$("style").value="";render();$("style").focus();};
+$("copyLyrics").onclick=e=>copy($("outLyrics"),e.target);
+$("copyStyle").onclick=e=>copy($("outStyle"),e.target);
+$("copyExclude").onclick=e=>copy($("setExclude"),e.target);
+render();
+</script>
