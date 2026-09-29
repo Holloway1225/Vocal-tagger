@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Suno Vocal Tagger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -23,6 +28,8 @@
   --m:#7fb0ee; --m-bg:#1b2a3d; --f:#ee8fb2; --f-bg:#3a1f2a; --b:#e3c46a; --b-bg:#352c14;
   --warn:#f2b27a; --warn-bg:#3a2614; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
 body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);padding:20px 16px 48px}
 .wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
 header h1{font:700 1.7rem/1.1 var(--display);letter-spacing:.02em;margin:0;text-wrap:balance}
@@ -35,7 +42,8 @@ header p{margin:4px 0 0;color:var(--muted);max-width:62ch}
 .ph h2{font:600 .95rem/1 var(--display);text-transform:uppercase;letter-spacing:.08em;margin:0}
 .ph h2 span{color:var(--accent);margin-right:6px}
 .hint{color:var(--muted);font-size:.85rem}
-textarea,input[type=text]{width:100%;background:var(--sunk);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:14px/1.5 var(--mono)}
+textarea,input[type=text]{width:100%;background:var(--sunk);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:16px/1.5 var(--mono)}
+@media (min-width:900px){textarea,input[type=text]{font-size:14px}}
 textarea{resize:vertical}
 #lyrics{min-height:260px}
 #style{min-height:110px}
@@ -69,6 +77,8 @@ pre.out .t{color:var(--accent);font-weight:500}
 .count{font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header>
@@ -333,3 +343,5 @@ $("copyStyle").onclick=e=>copy($("outStyle"),e.target);
 $("copyExclude").onclick=e=>copy($("setExclude"),e.target);
 render();
 </script>
+</body>
+</html>
